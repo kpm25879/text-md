@@ -445,101 +445,107 @@ function generateRandomViews() {
   return v + Math.floor(Math.random()*999);
 }
 
-// ── PARAGRAPH FORMATTER ──────────────────────────────────────
-// GUARANTEED: output always has \n\n between every paragraph
+// ── SMART PARAGRAPH FORMATTER ─────────────────────────────────
 function formatContent(text, title) {
+  // Remove duplicated title at top
   let body = text.trim();
-
-  // Remove title if duplicated on first line
-  const firstLine = body.split("\n")[0].trim().replace(/^[#\s*-]+/, "");
-  if (firstLine.length > 4 && title.toLowerCase().includes(firstLine.toLowerCase().substring(0, 12)))
+  const fl = body.split("\n")[0].trim().replace(/^[#\s]+/,"");
+  if (fl && title.toLowerCase().startsWith(fl.toLowerCase().substring(0,15)))
     body = body.split("\n").slice(1).join("\n").trim();
 
-  // Step 1: Collect all sentences from the entire text
-  // Split on sentence-ending punctuation followed by whitespace
-  // This works for both Hindi (।) and English (. ! ?)
-  const allText = body
-    .replace(/\r\n/g, "\n").replace(/\r/g, "\n")
-    // Normalize multiple spaces
-    .replace(/[^\S\n]+/g, " ")
-    // Join lines that don't end with sentence punctuation (continuation lines)
-    .split("\n")
-    .reduce((acc, line) => {
-      line = line.trim();
-      if (!line) return acc + "\n\n"; // blank line = paragraph break signal
-      if (!acc) return line;
-      const prev = acc.trimEnd();
-      // If previous ends with sentence punctuation, start fresh
-      if (/[.!?।…]$/.test(prev) || /^#{1,6}\s/.test(line)) return prev + "\n" + line;
-      // Otherwise join with space (continuation)
-      return prev + " " + line;
-    }, "");
+  body = body.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
 
-  // Step 2: Split into raw blocks (by 
+  const rawLines = body.split("\n");
+  const nonEmpty = rawLines.filter(l=>l.trim());
+  const totalWords = nonEmpty.reduce((s,l)=>s+l.trim().split(/\s+/).length,0);
+  const avgWords = totalWords / Math.max(nonEmpty.length,1);
+  const enderRatio = nonEmpty.filter(l=>/[.!?।…]$/.test(l.trim())).length / Math.max(nonEmpty.length,1);
+  // Count existing blank lines (paragraph separators)
+  const blankLines = rawLines.filter(l=>!l.trim()).length;
+  const hasParagraphBreaks = blankLines >= 1;
 
- or by 
- before headings)
-  const rawBlocks = allText
-    .split(/\n{2,}/)
-    .map(b => b.trim())
-    .filter(Boolean);
+  let paragraphs;
+  if (!hasParagraphBreaks && nonEmpty.length <= 3 && avgWords > 30) {
+    // True wall of text — one big blob
+    paragraphs = splitWall(body);
+  } else if (!hasParagraphBreaks && enderRatio > 0.55 && avgWords < 22) {
+    // Every sentence on its own line, no breaks
+    paragraphs = groupDense(rawLines);
+  } else if (hasParagraphBreaks) {
+    // Already has paragraph breaks — respect them
+    paragraphs = parseNormal(rawLines);
+  } else {
+    // No breaks detected — force split by sentences
+    paragraphs = splitWall(body);
+  }
 
-  // Step 3: For each block, split into sentences then group 4 per paragraph
-  const SENTENCES_PER_PARA = 4;
-  const finalParas = [];
+  // If still just 1 paragraph and text is long, force-split it
+  if (paragraphs.length < 2 && totalWords > 80) {
+    paragraphs = splitWall(body);
+  }
 
-  rawBlocks.forEach(block => {
-    if (!block) return;
-
-    // Heading — keep as-is
-    if (/^#{1,6}\s/.test(block)) {
-      finalParas.push(block);
-      return;
-    }
-
-    // Split block into individual sentences
-    const sentences = block
-      .replace(/([.!?।…])\s+/g, "$1|||")
-      .split("|||")
-      .map(s => s.trim())
-      .filter(Boolean);
-
-    if (sentences.length <= SENTENCES_PER_PARA) {
-      // Small block — keep as one paragraph
-      finalParas.push(sentences.join(" "));
-    } else {
-      // Large block — chunk into groups of SENTENCES_PER_PARA
-      for (let i = 0; i < sentences.length; i += SENTENCES_PER_PARA) {
-        const chunk = sentences.slice(i, i + SENTENCES_PER_PARA).join(" ");
-        if (chunk.trim()) finalParas.push(chunk.trim());
-      }
-    }
-  });
-
-  // Step 4: Post-process — detect headings, clean up
+  const ENDERS = /[.!?।…]$/;
   const output = [];
-  finalParas.forEach((para, idx) => {
+  paragraphs.forEach((para, idx) => {
     para = para.trim();
     if (!para) return;
-
-    // Already a markdown heading
-    if (/^#{1,6}\s/.test(para)) {
-      output.push(para);
+    if (/^#{1,6}\s/.test(para)) { output.push(para); return; }
+    if (idx > 0 && para.split("\n").length===1 && para.length<60
+        && para.split(/\s+/).length<=9 && !ENDERS.test(para)) {
+      output.push("## " + para.replace(/:$/,""));
       return;
     }
-
-    // Short line with no sentence ending → could be a section heading
-    const wordCount = para.split(/\s+/).length;
-    if (idx > 0 && wordCount <= 8 && para.length < 60 && !/[.!?।…,]$/.test(para)) {
-      output.push("## " + para);
-      return;
-    }
-
-    output.push(para);
+    const joined = para.split("\n").map(l=>l.trim()).filter(Boolean).join(" ");
+    output.push(joined);
   });
+  return output.join("\n\n").trim();
+}
 
-  // Step 5: Join with DOUBLE newline — this is what creates blank lines in the .md file
-  return output.join("\n\n");
+function splitWall(text) {
+  let sentences = text
+    .replace(/([.!?।])\s+/g,"$1\n")
+    .split("\n").map(s=>s.trim()).filter(Boolean);
+  if (sentences.length < 3) {
+    sentences = text.split(/(?<=[.!?।])\s+/).map(s=>s.trim()).filter(Boolean);
+  }
+  const PSIZE = 4;
+  const groups = [];
+  for (let i=0; i<sentences.length; i+=PSIZE)
+    groups.push(sentences.slice(i,i+PSIZE).join(" "));
+  return groups;
+}
+
+function groupDense(lines) {
+  const PSIZE = 4;
+  const sentences = [];
+  let buf = "";
+  lines.forEach(line => {
+    const t = line.trim();
+    if (!t) { if(buf){sentences.push({text:buf.trim(),brk:true});buf="";} return; }
+    if (/^#{1,6}\s/.test(t)) { if(buf){sentences.push({text:buf.trim(),brk:false});buf="";} sentences.push({text:t,h:true}); return; }
+    buf += (buf?" ":"")+t;
+    if (/[.!?।…]$/.test(t)) { sentences.push({text:buf.trim(),brk:false}); buf=""; }
+  });
+  if (buf) sentences.push({text:buf.trim(),brk:false});
+  const out = []; let grp = [];
+  sentences.forEach(item => {
+    if (item.h)   { if(grp.length){out.push(grp.join(" "));grp=[];} out.push(item.text); return; }
+    if (item.brk) { if(grp.length){out.push(grp.join(" "));grp=[];} if(item.text)grp.push(item.text); return; }
+    grp.push(item.text);
+    if (grp.length>=PSIZE) { out.push(grp.join(" ")); grp=[]; }
+  });
+  if (grp.length) out.push(grp.join(" "));
+  return out;
+}
+
+function parseNormal(lines) {
+  const out=[]; let cur=[];
+  lines.forEach(line => {
+    if (!line.trim()) { if(cur.length){out.push(cur.join("\n"));cur=[];} }
+    else cur.push(line.trim());
+  });
+  if (cur.length) out.push(cur.join("\n"));
+  return out;
 }
 
 // ── BUILD MARKDOWN (no double quotes in values) ───────────────
