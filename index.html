@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarkForge — SEO Markdown Generator</title>
+  <meta name="description" content="Convert messy text into clean, SEO-optimized Markdown with structured frontmatter. Free static tool." />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <div id="toast" class="toast"></div>
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-mark">⬡</span>
+        <span class="logo-text">Mark<strong>Forge</strong></span>
+      </div>
+      <p class="tagline">Messy Text → Clean SEO Markdown</p>
+    </div>
+    <div class="header-grid-lines" aria-hidden="true"></div>
+  </header>
+
+  <main class="main">
+    <div class="grid-container">
+
+      <!-- ── INPUT PANEL ── -->
+      <section class="panel panel--input">
+        <div class="panel-header">
+          <span class="panel-label">01 / INPUT</span>
+          <h2 class="panel-title">Paste Your Raw Text</h2>
+          <div class="word-counter-wrapper">
+            <span class="word-badge"><span id="wordCount">0</span> words</span>
+            <span class="char-badge"><span id="charCount">0</span> chars</span>
+          </div>
+        </div>
+
+        <div class="textarea-wrapper">
+          <textarea id="inputText"
+            placeholder="Paste your raw, messy text here...&#10;&#10;• Blog posts, stories, notes, articles&#10;• Hindi / Hinglish / English — all supported&#10;• The messier, the better — we'll clean it up"
+            spellcheck="false"></textarea>
+          <button class="clear-btn" id="clearBtn" title="Clear">✕</button>
+        </div>
+
+        <!-- Options -->
+        <div class="options-row">
+          <label class="option-item">
+            <input type="checkbox" id="optFeatured" />
+            <span>Featured Post</span>
+          </label>
+          <label class="option-item">
+            <span>Author</span>
+            <input type="text" id="authorInput" value="Admin" class="inline-input" placeholder="Author name" />
+          </label>
+        </div>
+
+        <!-- Manual Overrides -->
+        <div class="manual-overrides">
+          <div class="override-field">
+            <label class="override-label" for="manualSlug">
+              🔗 Custom Slug <span class="override-hint">leave empty to auto-generate</span>
+            </label>
+            <div class="override-input-wrap">
+              <input type="text" id="manualSlug" class="override-input"
+                placeholder="e.g. meri-pehli-mohabbat-ki-kahani" spellcheck="false" />
+              <button class="override-clear" data-target="manualSlug">✕</button>
+            </div>
+          </div>
+          <div class="override-field">
+            <label class="override-label" for="manualDesc">
+              📝 Custom Description <span class="override-hint">leave empty to auto-generate</span>
+            </label>
+            <div class="override-input-wrap desc-wrap">
+              <textarea id="manualDesc" class="override-textarea"
+                placeholder="Write a custom SEO description (150-200 chars recommended)..."
+                spellcheck="false" rows="2"></textarea>
+              <button class="override-clear desc-clear" data-target="manualDesc">✕</button>
+            </div>
+            <div class="desc-counter"><span id="descCharCount">0</span> / 200 chars</div>
+          </div>
+        </div>
+
+        <!-- Category -->
+        <div class="category-section">
+          <div class="category-label-row">
+            <span class="section-label">Category <span class="auto-badge" id="autoBadge">AUTO</span></span>
+          </div>
+          <div class="category-grid" id="categoryGrid">
+            <button class="cat-btn active" data-cat="auto">🤖 Auto Detect</button>
+            <button class="cat-btn" data-cat="ऑफिस में चुदाई">💼 ऑफिस में चुदाई</button>
+            <button class="cat-btn" data-cat="रंडी की चुदाई">💃 रंडी की चुदाई</button>
+            <button class="cat-btn" data-cat="पड़ोस में चुदाई">🏘️ पड़ोस में चुदाई</button>
+            <button class="cat-btn" data-cat="सील तोड़ चुदाई">🔥 सील तोड़ चुदाई</button>
+            <button class="cat-btn" data-cat="लड़कियों की गांड़ चुदाई">🍑 लड़कियों की गांड़ चुदाई</button>
+            <button class="cat-btn" data-cat="गे चुदाई">👬 गे चुदाई</button>
+            <button class="cat-btn" data-cat="बुआ की चुदाई">👵 बुआ की चुदाई</button>
+            <button class="cat-btn" data-cat="ग्रुप में चुदाई">👥 ग्रुप में चुदाई</button>
+            <button class="cat-btn" data-cat="नजदीकी रिश्तों में चुदाई">💏 नजदीकी रिश्तों में चुदाई</button>
+            <button class="cat-btn" data-cat="अदला बदली">🔄 अदला बदली</button>
+            <button class="cat-btn" data-cat="लेस्बियन चुदाई">👭 लेस्बियन चुदाई</button>
+            <button class="cat-btn" data-cat="नौकर नौकरानी चुदाई">🧹 नौकर नौकरानी चुदाई</button>
+            <button class="cat-btn" data-cat="अजनबी की चुदाई">🚶 अजनबी की चुदाई</button>
+            <button class="cat-btn" data-cat="भाभी की चुदाई">👩 भाभी की चुदाई</button>
+            <button class="cat-btn" data-cat="चाची की चुदाई">👩 चाची की चुदाई</button>
+            <button class="cat-btn" data-cat="मामी की चुदाई">👩 मामी की चुदाई</button>
+            <button class="cat-btn" data-cat="मौसी की चुदाई">👩 मौसी की चुदाई</button>
+            <button class="cat-btn" data-cat="आंटी की चुदाई">👵 आंटी की चुदाई</button>
+            <button class="cat-btn" data-cat="भाई बहन की चुदाई">👫 भाई बहन की चुदाई</button>
+            <button class="cat-btn" data-cat="ससुर बहू की चुदाई">👴 ससुर बहू की चुदाई</button>
+            <button class="cat-btn" data-cat="बाप बेटी की चुदाई">👨 बाप बेटी की चुदाई</button>
+            <button class="cat-btn" data-cat="माँ की चुदाई">👩 माँ की चुदाई</button>
+            <button class="cat-btn" data-cat="बीवी की चुदाई">💍 बीवी की चुदाई</button>
+            <button class="cat-btn" data-cat="चुदाई की कहानी">🔞 चुदाई की कहानी</button>
+            <button class="cat-btn" data-cat="जीजा साली की चुदाई">🧑 जीजा साली की चुदाई</button>
+            <button class="cat-btn" data-cat="गर्लफ्रेंड की चुदाई">💋 गर्लफ्रेंड की चुदाई</button>
+            <button class="cat-btn" data-cat="हॉट सेक्स स्टोरी">🌶️ हॉट सेक्स स्टोरी</button>
+          </div>
+        </div>
+
+        <!-- Fixed Tags -->
+        <div class="tags-preview-section">
+          <span class="section-label">Fixed Tags <span class="tag-count-badge">20 tags — applied to every post</span></span>
+          <div class="tags-preview">
+            <span class="tag-chip">free sex kahani</span>
+            <span class="tag-chip">indian sex stories</span>
+            <span class="tag-chip">hindi sex stories</span>
+            <span class="tag-chip">desi kahani</span>
+            <span class="tag-chip">desi sex stories</span>
+            <span class="tag-chip">desi sex kahani</span>
+            <span class="tag-chip">antarvasna</span>
+            <span class="tag-chip">kamvasna</span>
+            <span class="tag-chip">xxxvasna</span>
+            <span class="tag-chip">desigaramkahani</span>
+            <span class="tag-chip">hindi antarvasna</span>
+            <span class="tag-chip">antarvasna hindi</span>
+            <span class="tag-chip">sex kahani</span>
+            <span class="tag-chip">free hot sex stories</span>
+            <span class="tag-chip">hindi chudai kahani</span>
+            <span class="tag-chip">desi chudai stories</span>
+            <span class="tag-chip">hot hindi kahani</span>
+            <span class="tag-chip">adult hindi stories</span>
+            <span class="tag-chip">blue film kahani</span>
+            <span class="tag-chip">hindi sexy kahani</span>
+          </div>
+        </div>
+
+        <button class="btn btn--generate" id="generateBtn">
+          <span class="btn-icon">⚙</span>
+          <span class="btn-text">Generate Markdown</span>
+          <span class="btn-loader"></span>
+        </button>
+      </section>
+
+      <!-- ── DIVIDER ── -->
+      <div class="divider" aria-hidden="true">
+        <div class="divider-line"></div>
+        <div class="divider-icon">→</div>
+        <div class="divider-line"></div>
+      </div>
+
+      <!-- ── OUTPUT PANEL ── -->
+      <section class="panel panel--output">
+        <div class="panel-header">
+          <span class="panel-label">02 / OUTPUT</span>
+          <h2 class="panel-title">SEO Markdown</h2>
+          <div class="output-stats" id="outputStats"></div>
+        </div>
+
+        <!-- Placeholder shown before generation -->
+        <div class="output-placeholder" id="outputPlaceholder">
+          <div class="placeholder-icon">⬡</div>
+          <p>Your clean, SEO-optimized Markdown will appear here</p>
+        </div>
+
+        <!-- Rendered output — hidden until generated -->
+        <div class="output-display" id="outputDisplay" style="display:none"></div>
+
+        <!-- Hidden textarea for copy/download -->
+        <textarea id="outputText" style="display:none" readonly></textarea>
+
+        <div class="action-row">
+          <button class="btn btn--copy" id="copyBtn" disabled><span>⎘ Copy</span></button>
+          <button class="btn btn--download" id="downloadBtn" disabled><span>↓ Download .md</span></button>
+          <button class="btn btn--regenerate" id="regenerateBtn" disabled><span>↺ New Views</span></button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar" id="statsBar">
+      <div class="stat-item"><span class="stat-key">Category</span><span class="stat-val" id="statCategoryVal">—</span></div>
+      <div class="stat-item"><span class="stat-key">Read Time</span><span class="stat-val" id="statReadTimeVal">—</span></div>
+      <div class="stat-item"><span class="stat-key">Tags</span><span class="stat-val" id="statTagsVal">—</span></div>
+      <div class="stat-item"><span class="stat-key">Views</span><span class="stat-val" id="statViewsVal">—</span></div>
+      <div class="stat-item"><span class="stat-key">Slug</span><span class="stat-val" id="statSlugVal">—</span></div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>MarkForge — Static tool. No backend. No data sent. 100% client-side.</p>
+  </footer>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-box">
+      <div class="loading-spinner"></div>
+      <p class="loading-text" id="loadingText">Analyzing content...</p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
