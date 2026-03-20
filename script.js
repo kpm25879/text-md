@@ -121,7 +121,7 @@ copyBtn.addEventListener("click", async () => {
   }
   showToast("Copied to clipboard!", "success");
   copyBtn.querySelector("span").textContent = "Copied!";
-  setTimeout(() => { copyBtn.querySelector("span").textContent = "Copy"; }, 2000);
+  setTimeout(() => { copyBtn.querySelector("span").textContent = "⎘ Copy"; }, 2000);
 });
 
 // ── DOWNLOAD ──────────────────────────────────────────────────
@@ -182,7 +182,7 @@ async function runGeneration(raw) {
   // Show stats
   statCategoryVal.textContent = category;
   statReadTimeVal.textContent = readTime;
-  statTagsVal.textContent     = "20 fixed tags";
+  statTagsVal.textContent     = FIXED_TAGS.length + " fixed tags";
   statViewsVal.textContent    = views.toLocaleString();
   statSlugVal.textContent     = slug;
   statsBar.classList.add("visible");
@@ -200,7 +200,7 @@ function renderOutput(md) {
   outputDisplay.innerHTML = "";
 
   // Split frontmatter from body
-  const match = md.match(/^---\n([\s\S]*?)\n---\n\n?([\s\S]*)$/);
+  const match = md.match(/^---\n([\s\S]*?)\n---\n+([\s\S]*)$/);
   if (!match) {
     // No frontmatter — render as plain paragraphs
     renderBodyParagraphs(md, outputDisplay);
@@ -411,6 +411,7 @@ function detectCategory(text) {
     "नौकर नौकरानी चुदाई"       : ["naukar","naukrani","servant","maid","kaam wali","bai"],
     "अजनबी की चुदाई"           : ["ajnabi","stranger","unknown","train","bus"],
     "भाभी की चुदाई"            : ["bhabhi","bhabhiji","bhai ki biwi"],
+    "नजदीकी रिश्तों में चुदाई" : ["sasur","sasurji","bahu","baap beti","papa beti","bhai bahan","brother sister","maa","mummy","chachi","mami","mausi","bua","jija","sali"],
     "चाची की चुदाई"            : ["chachi","chachiji"],
     "मामी की चुदाई"            : ["mami","mamiji"],
     "मौसी की चुदाई"            : ["mausi","mausiji"],
@@ -490,8 +491,11 @@ function formatContent(text, title) {
     para = para.trim();
     if (!para) return;
     if (/^#{1,6}\s/.test(para)) { output.push(para); return; }
-    if (idx > 0 && para.split("\n").length===1 && para.length<60
-        && para.split(/\s+/).length<=9 && !ENDERS.test(para)) {
+    // Only promote to heading if it ends with ":" OR is very short (≤5 words) AND has no sentence punctuation
+    const wordCount = para.split(/\s+/).length;
+    if (idx > 0 && para.split("\n").length === 1 && para.length < 60
+        && wordCount <= 6 && !ENDERS.test(para)
+        && (/:\s*$/.test(para) || wordCount <= 4)) {
       output.push("## " + para.replace(/:$/,""));
       return;
     }
@@ -506,7 +510,12 @@ function splitWall(text) {
     .replace(/([.!?।])\s+/g,"$1\n")
     .split("\n").map(s=>s.trim()).filter(Boolean);
   if (sentences.length < 3) {
-    sentences = text.split(/(?<=[.!?।])\s+/).map(s=>s.trim()).filter(Boolean);
+    // Safe cross-browser split on sentence-ending punctuation (no lookbehind)
+    const parts = text.split(/([.!?।])\s+/);
+    const rebuilt = [];
+    for (let i = 0; i < parts.length; i += 2)
+      rebuilt.push((parts[i] || "") + (parts[i + 1] || ""));
+    sentences = rebuilt.map(s => s.trim()).filter(Boolean);
   }
   const PSIZE = 4;
   const groups = [];
@@ -541,11 +550,19 @@ function groupDense(lines) {
 function parseNormal(lines) {
   const out=[]; let cur=[];
   lines.forEach(line => {
-    if (!line.trim()) { if(cur.length){out.push(cur.join("\n"));cur=[];} }
+    if (!line.trim()) { if(cur.length){out.push(cur.join(" "));cur=[];} }
     else cur.push(line.trim());
   });
-  if (cur.length) out.push(cur.join("\n"));
+  if (cur.length) out.push(cur.join(" "));
   return out;
+}
+
+function yamlVal(s) {
+  // Wrap in single quotes if value contains colon, hash, special yaml chars, or is non-ASCII
+  if (/[:#\[\]{}&*!|>'"%@`,]/.test(s) || /[^\x00-\x7F]/.test(s)) {
+    return "'" + s.replace(/'/g, "''") + "'";
+  }
+  return s;
 }
 
 // ── BUILD MARKDOWN (no double quotes in values) ───────────────
@@ -557,18 +574,18 @@ function buildMarkdown(d) {
   const category    = noQuotes(d.category);
   const readTime    = noQuotes(d.readTime);
   const date        = noQuotes(d.publishDate);
-  const tagsYaml    = d.tags.map(t => "  - " + noQuotes(t)).join("\n");
+  const tagsYaml    = d.tags.map(t => "  - " + yamlVal(noQuotes(t))).join("\n");
   const body        = formatContent(d.content, d.title);
 
   return "---\n" +
-    "title: " + title + "\n" +
+    "title: " + yamlVal(title) + "\n" +
     "slug: " + slug + "\n" +
-    "description: " + description + "\n" +
-    "author: " + author + "\n" +
-    "category: " + category + "\n" +
+    "description: " + yamlVal(description) + "\n" +
+    "author: " + yamlVal(author) + "\n" +
+    "category: " + yamlVal(category) + "\n" +
     "tags:\n" + tagsYaml + "\n" +
     "publishDate: " + date + "\n" +
-    "readTime: " + readTime + "\n" +
+    "readTime: " + yamlVal(readTime) + "\n" +
     "featured: " + (d.featured ? "true" : "false") + "\n" +
     "views: " + d.views + "\n" +
     "---\n\n" +
