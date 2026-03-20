@@ -461,28 +461,27 @@ function formatContent(text, title) {
   const totalWords = nonEmpty.reduce((s,l)=>s+l.trim().split(/\s+/).length,0);
   const avgWords = totalWords / Math.max(nonEmpty.length,1);
   const enderRatio = nonEmpty.filter(l=>/[.!?।…]$/.test(l.trim())).length / Math.max(nonEmpty.length,1);
-  // Count existing blank lines (paragraph separators)
   const blankLines = rawLines.filter(l=>!l.trim()).length;
   const hasParagraphBreaks = blankLines >= 1;
 
   let paragraphs;
   if (!hasParagraphBreaks && nonEmpty.length <= 3 && avgWords > 30) {
-    // True wall of text — one big blob
     paragraphs = splitWall(body);
   } else if (!hasParagraphBreaks && enderRatio > 0.55 && avgWords < 22) {
-    // Every sentence on its own line, no breaks
     paragraphs = groupDense(rawLines);
   } else if (hasParagraphBreaks) {
-    // Already has paragraph breaks — respect them
     paragraphs = parseNormal(rawLines);
   } else {
-    // No breaks detected — force split by sentences
     paragraphs = splitWall(body);
   }
 
-  // If still just 1 paragraph and text is long, force-split it
-  if (paragraphs.length < 2 && totalWords > 80) {
+  // ── NUCLEAR FALLBACK: guarantee at least 2 paragraphs for any text > 60 words ──
+  if (paragraphs.length < 2 && totalWords > 60) {
     paragraphs = splitWall(body);
+  }
+  // If splitWall also returned 1 paragraph, force-split the text at midpoint sentence boundary
+  if (paragraphs.length < 2 && totalWords > 60) {
+    paragraphs = forceSplitAtMidpoint(body);
   }
 
   const ENDERS = /[.!?।…]$/;
@@ -491,7 +490,7 @@ function formatContent(text, title) {
     para = para.trim();
     if (!para) return;
     if (/^#{1,6}\s/.test(para)) { output.push(para); return; }
-    // Only promote to heading if it ends with ":" OR is very short (≤5 words) AND has no sentence punctuation
+    // Only promote to heading if it ends with ":" OR is ≤4 words with no sentence punctuation
     const wordCount = para.split(/\s+/).length;
     if (idx > 0 && para.split("\n").length === 1 && para.length < 60
         && wordCount <= 6 && !ENDERS.test(para)
@@ -502,26 +501,47 @@ function formatContent(text, title) {
     const joined = para.split("\n").map(l=>l.trim()).filter(Boolean).join(" ");
     output.push(joined);
   });
-  return output.join("\n\n").trim();
+
+  // Final guaranteed double-newline join — this IS the \n\n between paragraphs
+  return output.filter(Boolean).join("\n\n").trim();
 }
 
 function splitWall(text) {
-  let sentences = text
-    .replace(/([.!?।])\s+/g,"$1\n")
-    .split("\n").map(s=>s.trim()).filter(Boolean);
-  if (sentences.length < 3) {
-    // Safe cross-browser split on sentence-ending punctuation (no lookbehind)
-    const parts = text.split(/([.!?।])\s+/);
-    const rebuilt = [];
-    for (let i = 0; i < parts.length; i += 2)
-      rebuilt.push((parts[i] || "") + (parts[i + 1] || ""));
-    sentences = rebuilt.map(s => s.trim()).filter(Boolean);
+  // Split on sentence-ending punctuation — safe, no lookbehind
+  const parts = text.split(/([.!?।…])\s+/);
+  const sentences = [];
+  for (let i = 0; i < parts.length; i += 2) {
+    const s = (parts[i] || "").trim() + (parts[i + 1] || "");
+    if (s.trim()) sentences.push(s.trim());
+  }
+  // If we still got just 1 "sentence", split on any whitespace run ≥2
+  if (sentences.length < 2) {
+    const words = text.trim().split(/\s+/);
+    if (words.length >= 2) {
+      const mid = Math.ceil(words.length / 4);
+      const rebuilt = [];
+      for (let i = 0; i < words.length; i += mid)
+        rebuilt.push(words.slice(i, i + mid).join(" "));
+      return rebuilt.filter(Boolean);
+    }
+    return [text.trim()];
   }
   const PSIZE = 4;
   const groups = [];
-  for (let i=0; i<sentences.length; i+=PSIZE)
-    groups.push(sentences.slice(i,i+PSIZE).join(" "));
+  for (let i = 0; i < sentences.length; i += PSIZE)
+    groups.push(sentences.slice(i, i + PSIZE).join(" "));
   return groups;
+}
+
+// Nuclear fallback: if all else fails, split text at sentence boundaries near midpoint
+function forceSplitAtMidpoint(text) {
+  const words = text.trim().split(/\s+/);
+  if (words.length < 8) return [text.trim()];
+  const PSIZE = Math.max(4, Math.ceil(words.length / 5));
+  const groups = [];
+  for (let i = 0; i < words.length; i += PSIZE)
+    groups.push(words.slice(i, i + PSIZE).join(" "));
+  return groups.filter(Boolean);
 }
 
 function groupDense(lines) {
@@ -557,15 +577,7 @@ function parseNormal(lines) {
   return out;
 }
 
-function yamlVal(s) {
-  // Wrap in single quotes if value contains colon, hash, special yaml chars, or is non-ASCII
-  if (/[:#\[\]{}&*!|>'"%@`,]/.test(s) || /[^\x00-\x7F]/.test(s)) {
-    return "'" + s.replace(/'/g, "''") + "'";
-  }
-  return s;
-}
-
-// ── BUILD MARKDOWN (no double quotes in values) ───────────────
+// ── BUILD MARKDOWN (no quotes anywhere in values) ────────────
 function buildMarkdown(d) {
   const title       = noQuotes(d.title);
   const slug        = noQuotes(d.slug);
@@ -574,18 +586,18 @@ function buildMarkdown(d) {
   const category    = noQuotes(d.category);
   const readTime    = noQuotes(d.readTime);
   const date        = noQuotes(d.publishDate);
-  const tagsYaml    = d.tags.map(t => "  - " + yamlVal(noQuotes(t))).join("\n");
+  const tagsYaml    = d.tags.map(t => "  - " + noQuotes(t)).join("\n");
   const body        = formatContent(d.content, d.title);
 
   return "---\n" +
-    "title: " + yamlVal(title) + "\n" +
+    "title: " + title + "\n" +
     "slug: " + slug + "\n" +
-    "description: " + yamlVal(description) + "\n" +
-    "author: " + yamlVal(author) + "\n" +
-    "category: " + yamlVal(category) + "\n" +
+    "description: " + description + "\n" +
+    "author: " + author + "\n" +
+    "category: " + category + "\n" +
     "tags:\n" + tagsYaml + "\n" +
     "publishDate: " + date + "\n" +
-    "readTime: " + yamlVal(readTime) + "\n" +
+    "readTime: " + readTime + "\n" +
     "featured: " + (d.featured ? "true" : "false") + "\n" +
     "views: " + d.views + "\n" +
     "---\n\n" +
