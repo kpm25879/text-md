@@ -310,11 +310,24 @@ function cleanText(text) {
   t = t.replace(/[\u200B-\u200D\uFEFF]/g,"");
   // Fix spaces within lines but NOT newlines
   t = t.replace(/[^\S\n]+/g," ");
-  // Normalise 3+ newlines to exactly 2 (paragraph break)
+  // Normalise 3+ newlines to exactly 2
   t = t.replace(/\n{3,}/g,"\n\n");
-  // Trim each line but KEEP the newline structure intact
+  // Trim each line
   t = t.split("\n").map(l => l.trim()).join("\n");
-  // Re-ensure paragraph breaks are double newlines (in case trim collapsed them)
+  t = t.replace(/\n{3,}/g,"\n\n");
+
+  // ── INSERT paragraph breaks at natural boundaries in wall-of-text ──
+  // 1. Dialogue speaker pattern: "रोहन- " / "मैं- " etc at start of sentence
+  //    Insert \n\n BEFORE any "Word- " or "Word: " that starts a new speaker turn
+  t = t.replace(/([\.\!\?।…])\s+([^\s\.\!\?।…\n]{2,20}[-:])\s+/g, "$1\n\n$2 ");
+
+  // 2. Also handle cases where speaker change happens at start of string
+  //    or after existing newline — make sure \n\n precedes it
+  t = t.replace(/\n([^\s\.\!\?।…\n]{2,20}[-:])\s+/g, "\n\n$1 ");
+
+  // Re-clean after insertions
+  t = t.replace(/\n{3,}/g,"\n\n");
+  t = t.split("\n").map(l => l.trim()).join("\n");
   t = t.replace(/\n{3,}/g,"\n\n");
   return t.trim();
 }
@@ -484,6 +497,32 @@ function formatContent(text, title) {
     paragraphs = forceSplitAtMidpoint(body);
   }
 
+  // ── RE-SPLIT any oversized paragraph (> 80 words) using splitWall ──
+  const MAX_PARA_WORDS = 80;
+  const MIN_PARA_WORDS = 10;
+  const expanded = [];
+  paragraphs.forEach(para => {
+    const wc = para.trim().split(/\s+/).length;
+    if (wc > MAX_PARA_WORDS) {
+      splitWall(para.trim()).forEach(s => expanded.push(s));
+    } else {
+      expanded.push(para);
+    }
+  });
+  paragraphs = expanded.filter(Boolean);
+
+  // ── MERGE tiny fragments (< 10 words) into the previous paragraph ──
+  const merged = [];
+  paragraphs.forEach(para => {
+    const wc = para.trim().split(/\s+/).length;
+    if (wc < MIN_PARA_WORDS && merged.length > 0 && !/^#{1,6}\s/.test(para)) {
+      merged[merged.length - 1] = merged[merged.length - 1].trim() + " " + para.trim();
+    } else {
+      merged.push(para);
+    }
+  });
+  paragraphs = merged.filter(Boolean);
+
   const ENDERS = /[.!?।…]$/;
   const output = [];
   paragraphs.forEach((para, idx) => {
@@ -507,37 +546,40 @@ function formatContent(text, title) {
 }
 
 function splitWall(text) {
-  // Split on sentence-ending punctuation — safe, no lookbehind
-  const parts = text.split(/([.!?।…])\s+/);
+  // Normalize unicode ellipsis to '...' so split works uniformly
+  const t = text.replace(/…/g, "...");
+  // Split on sentence-ending punctuation followed by whitespace — safe, no lookbehind
+  const parts = t.split(/([.!?।]+)\s+/);
   const sentences = [];
   for (let i = 0; i < parts.length; i += 2) {
     const s = (parts[i] || "").trim() + (parts[i + 1] || "");
     if (s.trim()) sentences.push(s.trim());
   }
-  // If we still got just 1 "sentence", split on any whitespace run ≥2
+  // If punctuation splitting failed, fall back to word-count chunking
   if (sentences.length < 2) {
-    const words = text.trim().split(/\s+/);
+    const words = t.trim().split(/\s+/);
     if (words.length >= 2) {
-      const mid = Math.ceil(words.length / 4);
+      const CHUNK = Math.max(25, Math.ceil(words.length / 6));
       const rebuilt = [];
-      for (let i = 0; i < words.length; i += mid)
-        rebuilt.push(words.slice(i, i + mid).join(" "));
+      for (let i = 0; i < words.length; i += CHUNK)
+        rebuilt.push(words.slice(i, i + CHUNK).join(" "));
       return rebuilt.filter(Boolean);
     }
-    return [text.trim()];
+    return [t.trim()];
   }
-  const PSIZE = 4;
+  // Group into paragraphs of 3 sentences each for good readability
+  const PSIZE = 3;
   const groups = [];
   for (let i = 0; i < sentences.length; i += PSIZE)
     groups.push(sentences.slice(i, i + PSIZE).join(" "));
   return groups;
 }
 
-// Nuclear fallback: if all else fails, split text at sentence boundaries near midpoint
+// Nuclear fallback: split purely by word count into ~6 chunks
 function forceSplitAtMidpoint(text) {
-  const words = text.trim().split(/\s+/);
+  const words = text.replace(/…/g,"...").trim().split(/\s+/);
   if (words.length < 8) return [text.trim()];
-  const PSIZE = Math.max(4, Math.ceil(words.length / 5));
+  const PSIZE = Math.max(20, Math.ceil(words.length / 6));
   const groups = [];
   for (let i = 0; i < words.length; i += PSIZE)
     groups.push(words.slice(i, i + PSIZE).join(" "));
