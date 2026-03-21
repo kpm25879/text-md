@@ -28,6 +28,7 @@ const optFeatured    = document.getElementById("optFeatured");
 const authorInput    = document.getElementById("authorInput");
 const categoryGrid   = document.getElementById("categoryGrid");
 const autoBadge      = document.getElementById("autoBadge");
+const manualTitle    = document.getElementById("manualTitle");
 const manualSlug     = document.getElementById("manualSlug");
 const manualDesc     = document.getElementById("manualDesc");
 const descCharCount  = document.getElementById("descCharCount");
@@ -147,7 +148,8 @@ async function runGeneration(raw) {
 
   setLoading(true, "Extracting title...");
   await delay(150);
-  const title = generateTitle(cleaned);
+  const titleRaw = manualTitle.value.trim();
+  const title    = titleRaw ? noQuotes(titleRaw) : generateTitle(cleaned);
 
   setLoading(true, "Generating slug...");
   await delay(100);
@@ -161,7 +163,7 @@ async function runGeneration(raw) {
   const description = descRaw ? noQuotes(descRaw) : generateDescription(cleaned);
   const readTime    = calcReadTime(cleaned);
   const views       = generateRandomViews();
-  const author      = noQuotes(authorInput.value.trim() || "Admin");
+  const author      = noQuotes(authorInput.value || "Admin");
   const featured    = optFeatured.checked;
   const publishDate = todayDate();
 

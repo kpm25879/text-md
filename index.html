@@ -54,12 +54,48 @@
           </label>
           <label class="option-item">
             <span>Author</span>
-            <input type="text" id="authorInput" value="Admin" class="inline-input" placeholder="Author name" />
+            <select id="authorInput" class="inline-select">
+              <option value="आराध्या शर्मा">आराध्या शर्मा</option>
+              <option value="अनन्या वर्मा">अनन्या वर्मा</option>
+              <option value="इशिता गुप्ता">इशिता गुप्ता</option>
+              <option value="काव्या सिंह">काव्या सिंह</option>
+              <option value="मीरा मिश्रा">मीरा मिश्रा</option>
+              <option value="नंदिनी चौधरी">नंदिनी चौधरी</option>
+              <option value="रिया अग्रवाल">रिया अग्रवाल</option>
+              <option value="सान्वी तिवारी">सान्वी तिवारी</option>
+              <option value="तान्या यादव">तान्या यादव</option>
+              <option value="विधि सक्सेना">विधि सक्सेना</option>
+              <option value="आरव शर्मा">आरव शर्मा</option>
+              <option value="आदित्य वर्मा">आदित्य वर्मा</option>
+              <option value="अर्जुन सिंह">अर्जुन सिंह</option>
+              <option value="देव गुप्ता">देव गुप्ता</option>
+              <option value="ईशान मिश्रा">ईशान मिश्रा</option>
+              <option value="कुणाल चौधरी">कुणाल चौधरी</option>
+              <option value="मोहित अग्रवाल">मोहित अग्रवाल</option>
+              <option value="रोहन तिवारी">रोहन तिवारी</option>
+              <option value="शिवांश यादव">शिवांश यादव</option>
+              <option value="यश सक्सेना">यश सक्सेना</option>
+              <option value="आदि शर्मा">आदि शर्मा</option>
+              <option value="आर्य वर्मा">आर्य वर्मा</option>
+              <option value="दक्ष गुप्ता">दक्ष गुप्ता</option>
+              <option value="कृष्ण सिंह">कृष्ण सिंह</option>
+              <option value="तेजस मिश्रा">तेजस मिश्रा</option>
+            </select>
           </label>
         </div>
 
         <!-- Manual Overrides -->
         <div class="manual-overrides">
+          <div class="override-field">
+            <label class="override-label" for="manualTitle">
+              ✏️ Custom Title <span class="override-hint">leave empty to auto-generate</span>
+            </label>
+            <div class="override-input-wrap">
+              <input type="text" id="manualTitle" class="override-input"
+                placeholder="e.g. मेरी पहली मोहब्बत की कहानी" spellcheck="false" />
+              <button class="override-clear" data-target="manualTitle">✕</button>
+            </div>
+          </div>
           <div class="override-field">
             <label class="override-label" for="manualSlug">
               🔗 Custom Slug <span class="override-hint">leave empty to auto-generate</span>

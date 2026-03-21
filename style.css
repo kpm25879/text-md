@@ -314,6 +314,22 @@ textarea#inputText::placeholder { color: var(--text-dim); font-style: italic; }
 }
 .inline-input:focus { border-color: var(--accent); }
 
+.inline-select {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  outline: none;
+  width: 160px;
+  transition: border-color 0.2s;
+  cursor: pointer;
+  appearance: auto;
+}
+.inline-select:focus { border-color: var(--accent); }
+
 /* ── MANUAL OVERRIDES ── */
 .manual-overrides {
   display: flex;
